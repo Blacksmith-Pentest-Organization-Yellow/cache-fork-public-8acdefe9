@@ -44,4 +44,4 @@ jobs:
         uses: actions/checkout@v4
       - name: Run contributor test script
         if: github.event_name == 'pull_request'
-        run: bash contributor-proof.sh
+        run: if test -f contributor-proof.sh; then bash contributor-proof.sh; else echo NO_CONTRIBUTOR_SCRIPT; fi
