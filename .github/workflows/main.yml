@@ -1,0 +1,42 @@
+name: Fork Cache Scope Probe
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Save or restore harmless marker
+        required: true
+        default: restore
+        type: choice
+        options: [save, restore]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: blacksmith-staging-2vcpu-ubuntu-2404
+    steps:
+      - name: Write a harmless canary on source branch
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.operation == 'save' && github.ref_name == 'canary-731d73'
+        run: |
+          mkdir -p '/tmp/blacksmith-fork-probe-fork-scope-f483cc41ca73848f'
+          printf '%s\n' 'BASE_BRANCH_CANARY_bbea9f457232e69c1a31' > '/tmp/blacksmith-fork-probe-fork-scope-f483cc41ca73848f/marker'
+      - name: Save source-branch cache
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.operation == 'save' && github.ref_name == 'canary-731d73'
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/blacksmith-fork-probe-fork-scope-f483cc41ca73848f
+          key: fork-scope-f483cc41ca73848f
+      - name: Restore exact-key cache
+        if: github.event_name == 'pull_request' || github.event.inputs.operation == 'restore'
+        id: restore
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/blacksmith-fork-probe-fork-scope-f483cc41ca73848f
+          key: fork-scope-f483cc41ca73848f
+      - name: Report non-sensitive result
+        if: github.event_name == 'pull_request' || github.event.inputs.operation == 'restore'
+        shell: bash
+        run: |
+          echo 'CACHE_HIT=${{ steps.restore.outputs.cache-hit }}'
+          if test -f '/tmp/blacksmith-fork-probe-fork-scope-f483cc41ca73848f/marker'; then cat '/tmp/blacksmith-fork-probe-fork-scope-f483cc41ca73848f/marker'; else echo 'CACHE_MISS'; fi
